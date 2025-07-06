@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจองเวลาใช้งาน AI</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for statistics charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Sarabun font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Sarabun font to all elements */
+        * {
+            font-family: 'Sarabun', sans-serif;
+        }
+        
+        /* Fade-in animation */
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        /* Slide-up animation */
+        .slide-up {
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        /* Bounce-in animation */
+        .bounce-in {
+            animation: bounceIn 0.8s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        /* Loading spinner animation */
+        .loading-spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #f87171;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Gradient background for the body */
+        .gradient-bg {
+            background: linear-gradient(135deg, #fef2f2 0%, #fce7e7 100%);
+        }
+        
+        /* Custom shadow for cards */
+        .card-shadow {
+            box-shadow: 0 10px 25px rgba(248, 113, 113, 0.1);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 card-shadow bounce-in">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">🔐 เข้าสู่ระบบ</h2>
+                <p class="text-gray-600">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p>
+            </div>
+            <div class="mb-6">
+                <input type="password" id="passwordInput" placeholder="รหัสผ่าน" 
+                       class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none transition-colors">
+            </div>
+            <button onclick="login()" class="w-full bg-rose-400 hover:bg-rose-500 text-white font-semibold py-3 rounded-xl transition-colors">
+                เข้าสู่ระบบ ✨
+            </button>
+            <div id="loginError" class="text-red-500 text-sm mt-2 hidden">❌ รหัสผ่านไม่ถูกต้อง</div>
+        </div>
+    </div>
+
+    <!-- Loading Modal (for general loading, including login) -->
+    <div id="loadingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 text-center">
+            <div class="loading-spinner mx-auto mb-4"></div>
+            <p class="text-gray-700">กำลังโหลดข้อมูล... ⏳</p>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 text-center bounce-in">
+            <div class="text-6xl mb-4">✅</div>
+            <h3 class="text-xl font-bold text-green-600 mb-2">บันทึกสำเร็จ!</h3>
+            <p class="text-gray-600 mb-4">ข้อมูลการจองได้รับการบันทึกแล้ว</p>
+            <button onclick="closeSuccessModal()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                ตกลง
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-lg fade-in">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <!-- Logo image with a placeholder fallback -->
+                        <img src="https://img2.pic.in.th/pic/logo-HDR.md.png" onerror="this.onerror=null;this.src='https://placehold.co/48x48/f87171/ffffff?text=Logo';" alt="Logo" class="h-12 w-auto rounded-full">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800">🤖 ระบบจองเวลาใช้งาน AI</h1>
+                            <p class="text-lg text-gray-600">โรงเรียนหางดงรัฐราษฎร์อุปถัมภ์</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <div class="container mx-auto px-6 py-6">
+            <div class="bg-white rounded-2xl card-shadow slide-up">
+                <div class="flex border-b">
+                    <button onclick="showTab('booking')" id="bookingTab" 
+                            class="flex-1 py-4 px-6 text-center font-semibold border-b-2 border-rose-400 text-rose-600 rounded-tl-2xl">
+                        📅 จองเวลาใช้งาน AI
+                    </button>
+                    <button onclick="showTab('statistics')" id="statisticsTab" 
+                            class="flex-1 py-4 px-6 text-center font-semibold text-gray-500 hover:text-rose-600 transition-colors rounded-tr-2xl">
+                        📊 สถิติการใช้งาน
+                    </button>
+                </div>
+
+                <!-- Booking Tab Content -->
+                <div id="bookingContent" class="p-6">
+                    <!-- User Info Section -->
+                    <div class="bg-rose-50 rounded-xl p-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">👤 ชื่อผู้ใช้งาน</label>
+                                <p id="userName" class="text-lg font-semibold text-gray-800">-</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">🏢 สังกัด</label>
+                                <p id="userDepartment" class="text-lg font-semibold text-gray-800">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Booking Form -->
+                    <form id="bookingForm" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📝 เรื่องที่ใช้งาน AI</label>
+                            <!-- AI Topic dropdown with 9 options -->
+                            <select id="aiTopic" required
+                                    class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none transition-colors">
+                                <option value="" disabled selected>เลือกเรื่องที่ใช้งาน AI</option>
+                                <option value="การพัฒนาบทเรียนและการจัดการเนื้อหา">1. การพัฒนาบทเรียนและการจัดการเนื้อหา: ค้นหาไอเดีย, แผน, กิจกรรม, ใบงาน, สื่อการสอน, และสร้างแบบทดสอบหรือแบบประเมิน</option>
+                                <option value="การส่งเสริมการเรียนรู้รายบุคคล">2. การส่งเสริมการเรียนรู้รายบุคคล: วิเคราะห์ข้อมูลนักเรียน, ค้นหาแหล่งเรียนรู้และปรับการสอนให้ตรงกับความต้องการเฉพาะ</option>
+                                <option value="การเข้าถึงและประมวลผลข้อมูล">3. การเข้าถึงและประมวลผลข้อมูล: ค้นคว้าข้อมูลที่ซับซ้อน, แปลภาษา, สรุปบทความหรือค้นหางานวิจัย</option>
+                                <option value="การวัดและประเมินผล">4. การวัดและประเมินผล: วิเคราะห์ผลการเรียนของนักเรียน, ระบุจุดแข็งจุดอ่อนและสร้างรูบริกหรือเกณฑ์การให้คะแนน</option>
+                                <option value="การพัฒนาวิชาชีพครู">5. การพัฒนาวิชาชีพครู: สืบค้นคอร์สเรียน, สัมมนาหรือแหล่งข้อมูลเพื่อเพิ่มพูนความรู้และทักษะการสอน</option>
+                                <option value="การบริหารจัดการชั้นเรียน">6. การบริหารจัดการชั้นเรียน: หาเทคนิคหรือกลยุทธ์ใหม่ๆ ในการจัดระเบียบชั้นเรียนและแก้ปัญหาพฤติกรรมของนักเรียน</option>
+                                <option value="การสร้างภาพหรืออินโฟกราฟิก">7. การสร้างภาพหรืออินโฟกราฟิก: สร้างรูปภาพประกอบบทเรียน, แผนผังความคิด (mind map) หรืออินโฟกราฟิก</option>
+                                <option value="การเขียนโค้ดหรือสร้างเว็บแอปพลิเคชัน">8. การเขียนโค้ดหรือสร้างเว็บแอปพลิเคชัน: พัฒนาสื่อการสอนเชิงโต้ตอบ, เขียนโค้ดพื้นฐานหรือการสร้างเว็บแอปพลิเคชัน</option>
+                                <option value="อื่นๆ">9. อื่นๆ</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">📅 วันที่</label>
+                                <input type="date" id="bookingDate" required
+                                       class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">⏰ เวลาเริ่ม</label>
+                                <input type="time" id="startTime" required
+                                       class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">⏰ เวลาสิ้นสุด</label>
+                                <input type="time" id="endTime" required
+                                       class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none transition-colors">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-rose-400 hover:bg-rose-500 text-white font-semibold py-4 rounded-xl transition-colors">
+                            🚀 ส่งข้อมูลจองเวลา
+                        </button>
+                    </form>
+
+                    <!-- Usage Instructions -->
+                    <div class="mt-8 p-6 bg-blue-50 rounded-xl shadow-inner border border-blue-200">
+                        <h3 class="text-lg font-bold text-blue-800 mb-4">💡 การใช้งาน</h3>
+                        <ul class="list-disc list-inside text-gray-700 space-y-2">
+                            <li>1. จองเวลาใช้งาน (ไม่เกิน 2 ชั่วโมง/การจอง)</li>
+                            <li>2. เข้าใช้งานที่ <a href="https://chatgpt.com/" target="_blank" class="text-blue-600 hover:underline font-medium">https://chatgpt.com/</a> </li>
+                            <li>3. เข้าใช้งานด้วยที่อยู่อีเมล์ <span class="font-semibold text-blue-700">hdr_ai@hangdong.ac.th</span> และรหัสผ่าน คือ <span class="font-semibold text-blue-700">Hdr_ai2025</span></li>
+                            <li>4. เมื่อใช้งานเสร็จแล้วตามเวลาที่จองไว้ กรุณาออกจากระบบ</li>
+                        </ul>
+                    </div>
+
+                    <div id="conflictError" class="text-red-500 text-sm mt-2 hidden">⚠️ มีการจองในช่วงเวลานี้แล้ว กรุณาเลือกเวลาอื่น</div>
+
+                    <!-- Booking Table -->
+                    <div class="mt-8">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4">📋 ตารางการจองเวลา</h3>
+                        <div class="flex items-center space-x-2 mb-4">
+                            <label for="searchDateInput" class="text-sm font-medium text-gray-700">ค้นหาวันที่:</label>
+                            <input type="date" id="searchDateInput"
+                                   class="px-4 py-2 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none transition-colors w-auto">
+                            <button onclick="filterBookingsByDate()" class="bg-rose-400 hover:bg-rose-500 text-white font-semibold py-2 px-4 rounded-xl transition-colors">
+                                ค้นหา 🔍
+                            </button>
+                            <button onclick="clearDateFilter()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-xl transition-colors">
+                                แสดงทั้งหมด
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full bg-white rounded-xl overflow-hidden shadow-lg">
+                                <thead class="bg-rose-400 text-white">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-semibold">📅 วันที่</th>
+                                        <th class="px-6 py-3 text-left font-semibold">⏰ เวลา</th>
+                                        <th class="px-6 py-3 text-left font-semibold">👤 ชื่อผู้ใช้งาน</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bookingTableBody">
+                                    <!-- Booking data will be loaded here dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Tab Content -->
+                <div id="statisticsContent" class="p-6 hidden">
+                    <!-- Filter Controls for statistics -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📅 ปี</label>
+                            <select id="yearFilter" class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none">
+                                <!-- Years will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📅 เดือน</label>
+                            <select id="monthFilter" class="w-full px-4 py-3 border-2 border-rose-200 rounded-xl focus:border-rose-400 focus:outline-none">
+                                <option value="">ทุกเดือน</option>
+                                <option value="1">มกราคม</option>
+                                <option value="2">กุมภาพันธ์</option>
+                                <option value="3">มีนาคม</option>
+                                <option value="4">เมษายน</option>
+                                <option value="5">พฤษภาคม</option>
+                                <option value="6">มิถุนายน</option>
+                                <option value="7">กรกฎาคม</option>
+                                <option value="8">สิงหาคม</option>
+                                <option value="9">กันยายน</option>
+                                <option value="10">ตุลาคม</option>
+                                <option value="11">พฤศจิกายน</option>
+                                <option value="12">ธันวาคม</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Charts for statistics -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">🏢 สถิติตามสังกัด</h3>
+                            <canvas id="departmentChart"></canvas>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">📅 สถิติตามวันที่</h3>
+                            <canvas id="dateChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- New AI Topic Usage Chart -->
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">📊 สถิติตามเรื่องที่ใช้งาน AI</h3>
+                        <canvas id="aiTopicChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-white shadow-lg mt-8 fade-in">
+            <div class="container mx-auto px-6 py-4 text-center">
+                <p class="text-gray-600">👨‍💻 จัดทำโดย กลุ่มงานวิชาการ โรงเรียนหางดงรัฐราษฎร์อุปถัมภ์</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Google Apps Script deployment URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxdO3BgPzaDm8k8R1iM89bWoITkevh34_D0JMS2c73e8zt7QXGPFF4nae8iMZ6qWp8jkQ/exec';
+        let currentUser = null; // Stores current logged-in user data
+        let bookingData = []; // Stores all booking data
+        let departmentChart = null; // Chart.js instance for department statistics
+        let dateChart = null; // Chart.js instance for date statistics
+        let aiTopicChart = null; // Chart.js instance for AI topic statistics
+
+        // Set the minimum date for the booking date input to today
+        document.getElementById('bookingDate').min = new Date().toISOString().split('T')[0];
+
+        /**
+         * Handles the user login process.
+         * Fetches user data from the Google Apps Script based on the provided password (ID).
+         */
+        async function login() {
+            const password = document.getElementById('passwordInput').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            // Display error if password is empty
+            if (!password) {
+                errorDiv.textContent = '❌ กรุณากรอกรหัสผ่าน';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading modal when login attempt starts
+            document.getElementById('loadingModal').classList.remove('hidden');
+            errorDiv.classList.add('hidden'); // Hide previous error message
+
+            try {
+                // Fetch login data from the Google Apps Script
+                const response = await fetch(`${SCRIPT_URL}?action=login&id=${password}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentUser = result.user; // Store user data
+                    document.getElementById('loginModal').classList.add('hidden'); // Hide login modal
+                    document.getElementById('mainContent').classList.remove('hidden'); // Show main content
+                    document.getElementById('userName').textContent = currentUser.name; // Display user name
+                    document.getElementById('userDepartment').textContent = currentUser.department; // Display user department
+                    loadBookingData(); // Load existing booking data
+                    populateYearFilter(); // Populate year filter for statistics
+                } else {
+                    // Show login error message
+                    errorDiv.textContent = '❌ รหัสผ่านไม่ถูกต้อง';
+                    errorDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorDiv.textContent = '❌ เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+                errorDiv.classList.remove('hidden');
+            } finally {
+                // Hide loading modal regardless of success or failure
+                document.getElementById('loadingModal').classList.add('hidden');
+            }
+        }
+
+        /**
+         * Switches between the "Booking" and "Statistics" tabs.
+         * @param {string} tabName - The name of the tab to show ('booking' or 'statistics').
+         */
+        function showTab(tabName) {
+            const bookingTab = document.getElementById('bookingTab');
+            const statisticsTab = document.getElementById('statisticsTab');
+            const bookingContent = document.getElementById('bookingContent');
+            const statisticsContent = document.getElementById('statisticsContent');
+
+            // Apply active/inactive styles to tabs and show/hide content
+            if (tabName === 'booking') {
+                bookingTab.classList.add('border-rose-400', 'text-rose-600');
+                bookingTab.classList.remove('text-gray-500');
+                statisticsTab.classList.remove('border-rose-400', 'text-rose-600');
+                statisticsTab.classList.add('text-gray-500');
+                bookingContent.classList.remove('hidden');
+                statisticsContent.classList.add('hidden');
+            } else {
+                statisticsTab.classList.add('border-rose-400', 'text-rose-600');
+                statisticsTab.classList.remove('border-rose-400', 'text-rose-600');
+                bookingTab.classList.remove('border-rose-400', 'text-rose-600');
+                bookingTab.classList.add('text-gray-500');
+                statisticsContent.classList.remove('hidden');
+                bookingContent.classList.add('hidden');
+                loadStatistics(); // Load statistics data when switching to the statistics tab
+            }
+        }
+
+        /**
+         * Loads booking data from the Google Apps Script.
+         */
+        async function loadBookingData() {
+            try {
+                const response = await fetch(`${SCRIPT_URL}?action=getBookings`);
+                const result = await response.json();
+                bookingData = result.data || []; // Update bookingData array
+                displayBookingTable(); // Display the updated booking data in the table (no filter initially)
+            } catch (error) {
+                console.error('Error loading booking data:', error);
+            }
+        }
+
+        /**
+         * Displays the loaded booking data in the booking table,
+         * filtering for future bookings and sorting them by date and time.
+         * @param {string} [filterDateParam=null] - Optional date string (YYYY-MM-DD) to filter bookings.
+         */
+        function displayBookingTable(filterDateParam = null) {
+            const tbody = document.getElementById('bookingTableBody');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Set to start of today for comparison
+
+            let filteredBookings = bookingData.filter(booking => {
+                const bookingDate = new Date(booking.date);
+                // Filter for future bookings
+                let isFuture = bookingDate >= today;
+
+                // Apply additional date filter if provided
+                if (filterDateParam) {
+                    return isFuture && booking.date === filterDateParam;
+                }
+                return isFuture;
+            });
+
+            // Sort bookings by date and time
+            filteredBookings.sort((a, b) => {
+                // Combine date string (YYYY-MM-DD) and time string (HH:MM) for accurate sorting
+                const dateTimeA = new Date(`${a.date}T${a.timeStart}`);
+                const dateTimeB = new Date(`${b.date}T${b.timeStart}`);
+                return dateTimeA.getTime() - dateTimeB.getTime(); // Sort by timestamp
+            });
+
+            // Helper function to format time values to HH:MM (24-hour)
+            // Now expects timeValue to be a string "HH:MM" from GS
+            const formatTimeForDisplay = (timeValue) => {
+                if (typeof timeValue === 'string' && timeValue.match(/^\d{2}:\d{2}$/)) {
+                    return timeValue;
+                }
+                console.warn('Invalid or unexpected time value format for display:', timeValue);
+                return 'Invalid Time';
+            };
+
+            tbody.innerHTML = filteredBookings.map(booking => {
+                const date = new Date(booking.date);
+                // Format date to show day, Thai month, and Buddhist year
+                const formattedDate = `${date.getDate()} ${getThaiMonth(date.getMonth())} ${date.getFullYear() + 543}`;
+                
+                const startTime = formatTimeForDisplay(booking.timeStart);
+                const endTime = formatTimeForDisplay(booking.timeStop);
+                
+                return `
+                    <tr class="border-b hover:bg-rose-50 transition-colors">
+                        <td class="px-6 py-4">${formattedDate}</td>
+                        <td class="px-6 py-4">${startTime} น. - ${endTime} น.</td>
+                        <td class="px-6 py-4">${booking.name}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        /**
+         * Filters the booking table by the date selected in the search input.
+         */
+        function filterBookingsByDate() {
+            const searchDate = document.getElementById('searchDateInput').value;
+            displayBookingTable(searchDate); // Pass the selected date to filter
+        }
+
+        /**
+         * Clears the date filter and displays all future bookings.
+         */
+        function clearDateFilter() {
+            document.getElementById('searchDateInput').value = ''; // Clear the input
+            displayBookingTable(); // Call without a filter to show all future bookings
+        }
+
+        /**
+         * Checks for time conflicts with existing bookings.
+         * @param {string} date - The date of the new booking (YYYY-MM-DD).
+         * @param {string} startTime - The start time of the new booking (HH:MM).
+         * @param {string} endTime - The end time of the new booking (HH:MM).
+         * @returns {boolean} True if a conflict is found, false otherwise.
+         */
+        function checkTimeConflict(date, startTime, endTime) {
+            return bookingData.some(booking => {
+                // Check if dates match
+                if (booking.date !== date) return false;
+                
+                const bookingStart = booking.timeStart; // Now expected to be "HH:MM" string
+                const bookingEnd = booking.timeStop;   // Now expected to be "HH:MM" string
+                
+                // Check for time overlap using string comparison (works for HH:MM)
+                return (startTime < bookingEnd && endTime > bookingStart);
+            });
+        }
+
+        /**
+         * Handles the submission of the booking form.
+         * Validates input, checks for time conflicts, and sends data to Google Apps Script.
+         */
+        document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Prevent default form submission
+
+            const aiTopic = document.getElementById('aiTopic').value;
+            const bookingDate = document.getElementById('bookingDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const conflictError = document.getElementById('conflictError');
+            
+            // Validate if start time is before end time
+            if (startTime >= endTime) {
+                // Use a custom modal or message box instead of alert()
+                showCustomAlert('⚠️ เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด');
+                return;
+            }
+            
+            // Check for conflicts
+            if (checkTimeConflict(bookingDate, startTime, endTime)) {
+                conflictError.classList.remove('hidden'); // Show conflict error message
+                return;
+            }
+            
+            conflictError.classList.add('hidden'); // Hide conflict error if no conflict
+
+            // Show loading modal
+            document.getElementById('loadingModal').classList.remove('hidden');
+            
+            try {
+                // Send booking data to Google Apps Script via POST request
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded', // Required for URLSearchParams
+                    },
+                    body: new URLSearchParams({
+                        action: 'addBooking',
+                        name: currentUser.name,
+                        department: currentUser.department,
+                        aiTopic: aiTopic,
+                        date: bookingDate,
+                        timeStart: startTime, // Send as HH:MM string
+                        timeStop: endTime     // Send as HH:MM string
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('loadingModal').classList.add('hidden'); // Hide loading
+                    document.getElementById('successModal').classList.remove('hidden'); // Show success modal
+                    document.getElementById('bookingForm').reset(); // Clear form fields
+                    loadBookingData(); // Reload booking data to update the table
+                } else {
+                    // Throw error if API call was not successful
+                    throw new Error(result.message || 'เกิดข้อผิดพลาด');
+                }
+            } catch (error) {
+                console.error('Booking error:', error);
+                document.getElementById('loadingModal').classList.add('hidden'); // Hide loading
+                // Use a custom modal or message box instead of alert()
+                showCustomAlert('❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+            }
+        });
+
+        /**
+         * Closes the success modal.
+         */
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+        }
+
+        /**
+         * Populates the year filter dropdown for statistics.
+         * Adds current year and previous 4 years (in Buddhist calendar).
+         */
+        function populateYearFilter() {
+            const yearFilter = document.getElementById('yearFilter');
+            const currentYear = new Date().getFullYear();
+            
+            // Add options for current year and past 4 years
+            for (let i = 0; i < 5; i++) {
+                const year = currentYear - i;
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = (year + 543).toString(); // Convert to Buddhist year
+                if (i === 0) option.selected = true; // Select current year by default
+                yearFilter.appendChild(option);
+            }
+            
+            // Add event listeners to trigger statistics reload on filter change
+            yearFilter.addEventListener('change', loadStatistics);
+            document.getElementById('monthFilter').addEventListener('change', loadStatistics);
+        }
+
+        /**
+         * Loads statistics data from the Google Apps Script based on selected year and month filters.
+         */
+        async function loadStatistics() {
+            const year = document.getElementById('yearFilter').value;
+            const month = document.getElementById('monthFilter').value;
+            
+            try {
+                // Show loading modal when statistics load starts
+                document.getElementById('loadingModal').classList.remove('hidden');
+
+                // Fetch statistics data
+                const response = await fetch(`${SCRIPT_URL}?action=getStatistics&year=${year}&month=${month}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayCharts(result.data); // Display data in charts
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            } finally {
+                // Hide loading modal regardless of success or failure
+                document.getElementById('loadingModal').classList.add('hidden');
+            }
+        }
+
+        /**
+         * Displays department, date, and AI topic usage statistics using Chart.js.
+         * @param {Array<Object>} data - The statistics data.
+         */
+        function displayCharts(data) {
+            const departmentData = {};
+            const dateData = {};
+            const aiTopicData = {}; // New object for AI topic data
+            
+            // Aggregate data for charts
+            data.forEach(item => {
+                departmentData[item.department] = (departmentData[item.department] || 0) + 1;
+                const date = new Date(item.date).toLocaleDateString('th-TH');
+                dateData[date] = (dateData[date] || 0) + 1;
+                aiTopicData[item.aiTopic] = (aiTopicData[item.aiTopic] || 0) + 1; // Aggregate AI topic data
+            });
+            
+            // Prepare labels with counts for each chart
+            const departmentLabels = Object.keys(departmentData).map(dept => `${dept} (${departmentData[dept]} ครั้ง)`);
+            const dateLabels = Object.keys(dateData).map(date => `${date} (${dateData[date]} ครั้ง)`);
+            const aiTopicLabels = Object.keys(aiTopicData).map(topic => `${topic} (${aiTopicData[topic]} ครั้ง)`);
+
+            // Define vibrant color palettes
+            const vibrantColors1 = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED',
+                '#FFCDD2', '#BBDEFB', '#FFF9C4', '#B2EBF2', '#D1C4E9', '#FFECB3'
+            ];
+            const vibrantColors2 = [
+                '#FF99C8', '#A2D2FF', '#FFC72C', '#83E8E8', '#C3B1E1', '#FFD1AA', '#FFECB3',
+                '#D9B3FF', '#B3FFD9', '#FFB3D9', '#D9FFB3', '#B3D9FF', '#FFD9B3'
+            ];
+            const vibrantColors3 = [
+                '#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0', '#118AB2', '#EF476F', '#FFC4E1',
+                '#A0C4FF', '#FFD6A5', '#B8F2E6', '#FFB3C6', '#D4A5A5', '#C6E2E9'
+            ];
+
+
+            // Destroy existing chart instances to prevent duplicates
+            if (departmentChart) departmentChart.destroy();
+            if (dateChart) dateChart.destroy();
+            if (aiTopicChart) aiTopicChart.destroy(); // Destroy existing AI topic chart
+
+            // Create Department Usage Doughnut Chart
+            const deptCtx = document.getElementById('departmentChart').getContext('2d');
+            departmentChart = new Chart(deptCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: departmentLabels, // Use new labels with counts
+                    datasets: [{
+                        data: Object.values(departmentData),
+                        backgroundColor: vibrantColors1 // Use vibrant color palette 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Create Daily Usage Bar Chart
+            const dateCtx = document.getElementById('dateChart').getContext('2d');
+            dateChart = new Chart(dateCtx, {
+                type: 'bar',
+                data: {
+                    labels: dateLabels, // Use new labels with counts
+                    datasets: [{
+                        label: 'จำนวนการใช้งาน',
+                        data: Object.values(dateData),
+                        backgroundColor: vibrantColors2 // Use vibrant color palette 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Create AI Topic Usage Bar Chart
+            const aiTopicCtx = document.getElementById('aiTopicChart').getContext('2d');
+            aiTopicChart = new Chart(aiTopicCtx, {
+                type: 'bar',
+                data: {
+                    labels: aiTopicLabels, // Use new labels with counts
+                    datasets: [{
+                        label: 'จำนวนการใช้งาน',
+                        data: Object.values(aiTopicData),
+                        backgroundColor: vibrantColors3 // Use vibrant color palette 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * This function is no longer used for displaying a table,
+         * as the summary table has been replaced by a chart.
+         */
+        function displaySummaryTable(data) {
+            // The summary table is now replaced by a chart, so this function is intentionally left empty
+            // or could be removed if no other textual summary is required.
+            const tbody = document.getElementById('summaryTableBody');
+            tbody.innerHTML = ''; // Clear any existing content if this function is called
+        }
+
+        /**
+         * Returns the Thai month name for a given month index (0-11).
+         * @param {number} monthIndex - The index of the month (0 for January, 11 for December).
+         * @returns {string} The Thai name of the month.
+         */
+        function getThaiMonth(monthIndex) {
+            const months = [
+                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+            ];
+            return months[monthIndex];
+        }
+
+        /**
+         * Custom alert function to replace native alert().
+         * Displays a simple modal with a message.
+         * @param {string} message - The message to display.
+         */
+        function showCustomAlert(message) {
+            const alertModal = document.createElement('div');
+            alertModal.id = 'customAlertModal';
+            alertModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            alertModal.innerHTML = `
+                <div class="bg-white rounded-2xl p-8 text-center bounce-in max-w-sm mx-4">
+                    <div class="text-4xl mb-4">ℹ️</div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">แจ้งเตือน</h3>
+                    <p class="text-gray-600 mb-4">${message}</p>
+                    <button onclick="document.getElementById('customAlertModal').remove()" class="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2 rounded-lg">
+                        ตกลง
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(alertModal);
+        }
+
+        // Event listener to allow Enter key for login in the password input field
+        document.getElementById('passwordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
